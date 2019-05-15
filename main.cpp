@@ -22,14 +22,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	uint8_t startcode[4] = { 00,00,00,01 };
 	FILE* fp;
 
-	const char* in_filename, * out_filename;
+	const char* in_filename, * out_filename, * origin_out_filename;
 
 	in_filename = argv[1];//输入文件名（Input file URL）
 	out_filename = argv[2];//输出文件名（Output file URL）
-
+	origin_out_filename = argv[3];//输出文件名（Output file URL）
 
 	av_register_all();
-//	fp = fopen(out_filename, "wb+");
+	fp = fopen(out_filename, "wb+");
 
 	if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
 		printf("Could not open input file.");
@@ -46,7 +46,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	//Output
-	avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, out_filename);
+	avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, origin_out_filename);
 	if (!ofmt_ctx) {
 		printf("Could not create output context\n");
 		ret = AVERROR_UNKNOWN;
@@ -84,8 +84,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	if (!(ofmt->flags & AVFMT_NOFILE)) {
-		if (avio_open(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE) < 0) {
-			printf("Could not open output file '%s'", out_filename);
+		if (avio_open(&ofmt_ctx->pb, origin_out_filename, AVIO_FLAG_WRITE) < 0) {
+			printf("Could not open output file '%s'", origin_out_filename);
 		}
 	}
 
@@ -140,34 +140,34 @@ int _tmain(int argc, _TCHAR* argv[])
 			continue;
 		}
 		
-		//AVPacket tmppkt;
-		//if (in_stream->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-		//{
+		AVPacket tmppkt;
+		if (in_stream->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+		{
 
-		//	if (flag)
-		//	{
-		//		fwrite(startcode, 4, 1, fp);
-		//		fwrite(sps, spsLength, 1, fp);
-		//		fwrite(startcode, 4, 1, fp);
-		//		fwrite(pps, ppsLength, 1, fp);
+			if (flag)
+			{
+				fwrite(startcode, 4, 1, fp);
+				fwrite(sps, spsLength, 1, fp);
+				fwrite(startcode, 4, 1, fp);
+				fwrite(pps, ppsLength, 1, fp);
 
-		//		pkt.data[0] = 0x00;
-		//		pkt.data[1] = 0x00;
-		//		pkt.data[2] = 0x00;
-		//		pkt.data[3] = 0x01;
-		//		fwrite(pkt.data, pkt.size, 1, fp);
+				pkt.data[0] = 0x00;
+				pkt.data[1] = 0x00;
+				pkt.data[2] = 0x00;
+				pkt.data[3] = 0x01;
+				fwrite(pkt.data, pkt.size, 1, fp);
 
-		//		flag = 0;
-		//	}
-		//	else
-		//	{
-		//		pkt.data[0] = 0x00;
-		//		pkt.data[1] = 0x00;
-		//		pkt.data[2] = 0x00;
-		//		pkt.data[3] = 0x01;
-		//		fwrite(pkt.data, pkt.size, 1, fp);
-		//	}
-
+				flag = 0;
+			}
+			else
+			{
+				pkt.data[0] = 0x00;
+				pkt.data[1] = 0x00;
+				pkt.data[2] = 0x00;
+				pkt.data[3] = 0x01;
+				fwrite(pkt.data, pkt.size, 1, fp);
+			}
+		}
 			pkt.pts = av_rescale_q_rnd(pkt.pts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
 			pkt.dts = av_rescale_q_rnd(pkt.dts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
 			pkt.duration = av_rescale_q(pkt.duration, in_stream->time_base, out_stream->time_base);
@@ -185,7 +185,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		frame_index++;
 	}
 
-//	fclose(fp);
+	fclose(fp);
 	fp = NULL;
 
 	av_write_trailer(ofmt_ctx);
