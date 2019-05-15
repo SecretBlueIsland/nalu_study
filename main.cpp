@@ -140,46 +140,18 @@ int _tmain(int argc, _TCHAR* argv[])
 			continue;
 		}
 		
-		AVPacket tmppkt;
-		if (in_stream->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-		{
+		pkt.pts = av_rescale_q_rnd(pkt.pts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+		pkt.dts = av_rescale_q_rnd(pkt.dts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+		pkt.duration = av_rescale_q(pkt.duration, in_stream->time_base, out_stream->time_base);
+		pkt.pos = -1;
 
-			if (flag)
-			{
-				fwrite(startcode, 4, 1, fp);
-				fwrite(sps, spsLength, 1, fp);
-				fwrite(startcode, 4, 1, fp);
-				fwrite(pps, ppsLength, 1, fp);
-
-				pkt.data[0] = 0x00;
-				pkt.data[1] = 0x00;
-				pkt.data[2] = 0x00;
-				pkt.data[3] = 0x01;
-				fwrite(pkt.data, pkt.size, 1, fp);
-
-				flag = 0;
-			}
-			else
-			{
-				pkt.data[0] = 0x00;
-				pkt.data[1] = 0x00;
-				pkt.data[2] = 0x00;
-				pkt.data[3] = 0x01;
-				fwrite(pkt.data, pkt.size, 1, fp);
-			}
-		}
-			pkt.pts = av_rescale_q_rnd(pkt.pts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-			pkt.dts = av_rescale_q_rnd(pkt.dts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-			pkt.duration = av_rescale_q(pkt.duration, in_stream->time_base, out_stream->time_base);
-			pkt.pos = -1;
-
-			pkt.stream_index = 0;
+		pkt.stream_index = 0;
 		//Write
-			if (av_interleaved_write_frame(ofmt_ctx, &pkt) < 0) {
-				printf("Error muxing packet\n");
-				break;
-			}
-		//}
+		if (av_interleaved_write_frame(ofmt_ctx, &pkt) < 0) {
+			printf("Error muxing packet\n");
+			break;
+		}
+
 		//printf("Write %8d frames to output file\n", frame_index);
 		av_free_packet(&pkt);
 		frame_index++;
